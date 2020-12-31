@@ -25,6 +25,7 @@ https://github.com/kenshow-blog/task-manage-app/issues/1
 # Features
 
 主な機能：
+
 ・ログイン、ユーザー登録機能
 
 ・タスクの編集、削除、作成が可能
