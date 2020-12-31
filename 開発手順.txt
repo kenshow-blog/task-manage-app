@@ -1,0 +1,248 @@
+pip install django
+
+pip install djangorestframework
+
+pip install django-cors-headers
+
+pip install djangorestframework-simplejwt
+
+pip install djoser
+認証関係のもの(保管してくれる)
+
+pip install pillow
+アバター関係を取り扱うため
+
+django-admin startproject src
+django-admin startapp api
+
+settings.pyにて
+jsontokenに有効期限をつけるために
+from datetime import timedelta
+import os
+
+INSTALLED_APPSにて
+'corsheaders,
+'rest_framework',
+'api.apps.ApiConfig',
+'djoser',
+
+MIDDLEWAREにて
+'corsheaders.middleware.CorsMiddleware'
+
+CORS_ORIGIN_WHITELIST 
+'http://loacalhost:3000'
+
+simplejwtの設定をカスタマイズする
+'AUTH_HEADER_TYPES': ('JWT',),
+'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30)
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    ]
+}
+
+timezoneを
+Asia/Tokyoへ
+
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+とmediaを作成
+
+
+urls.py(src)にて
+
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('api/', include('api.urls')),
+    ↑apiアプリ参照
+    path('authen/', include('djoser.urls.jwt'))
+    ↑認証画面へパスを通す
+]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+↑urlとそこにアクセスした時に表示したいディレクトリとの結びつける
+
+
+apiのurls.pyにて
+from django.urls import path, include
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+このrouterを利用してviewsetの紐付けを行っていく
+
+urlpatterns = [
+    path('', include(router.urls))
+]
+としてrouterを参照してもらうようにする
+
+models.pyにて
+from django.contrib.auth.models import User ユーザーを参照するため
+from django.core.validators import MinValueValidator　マイナスの数字を登録できないように制限をかけるため
+import uuid　プライマリーキーの連番で登録されていくのを避けるため
+
+models.pyにて
+↓メディアの保存先、保存される際の名前を指定しておく実装
+def upload_avatar_path(instance, filename):
+    ext = filename.split('.')[-1]
+    return '/'.join(['avatars', str(instance.user_profile.id)+str(ext)])
+
+
+class Profile(models.Model):
+    user_profile = models.OneToOneField(
+        User, related_name='user_profile',
+        on_delete=models.CASCADE
+    )
+    img = models.ImageField(blank=True, null=True, upload_to=upload_avatar_path)
+
+    def __str__(self):
+        return self.user_profile.username
+    ↑def __str__(self)により、管理画面に表示されるモデル内のデータ（レコード）を判別するための、名前（文字列）を定義することができます。
+    今回の場合だとユーザー名が表示されてその名前をクリックするとそのユーザーのプロフィール情報に遷移できるようにしている
+
+models.pyにて必要なテーブルを作成していく
+
+admin.pyにて
+from .models import Category, Task, Profile
+# Register your models here.
+
+admin.site.register(Category)
+admin.site.register(Task)
+admin.site.register(Profile)
+として、adminにてそれぞれのテーブルの中身を確認することができる
+
+python3 manage.py runserver
+
+serializers.pynにて
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ['id','username', 'password']
+        extra_kwargs = {'password':{'write_only': True, 'required': True}}
+
+としていくのだが、ここでpasswordは書くのみにしておく。読み取る処理を入れてしまったらセキュリティが弱くなってしまうため。
+実際にこのユーザー情報を閲覧できるパスに行ってみると、パスワードは表示されていない
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)
+        return user
+    を追記してハッシュ化したパスワードをユーザーに送りデータベースに保存することが可能
+
+    class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['id', 'user_profile', 'img']
+        extra_kwargs = {'user_profile': {'read_only': True}}
+    と記述。サインアップする際に、自動でプロフィールを作成するため、読み込みは可能にしておく
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    category_item = serializers.ReadOnlyField(source='category.item', read_only=True)
+    owner_username = serializers.ReadOnlyField(source='owner.username', read_only=True)
+    responsible_username = serializers.ReadOnlyField(source='responsible.username', read_only=True)
+    status_name = serializers.CharField(source='get_status_display', read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+
+    class Meta:
+        model = Task
+        fields = ['id','task','description', 'criteria', 'status', 'status_name', 'category', 'category_item',
+        'estimate', 'responsible', 'responsible_username', 'owner', 'owner_username', 'created_at', 'updated_at']
+
+        extra_kwargs = {'owner': {'read_only': True}}
+
+を追記
+基本リードオンリー
+
+
+viewを作成
+
+途中、ログインユーザーはログインユーザーが作成したタスクのみしか削除できないように、custompermissions.pyを作成して、中に
+その実装を書いた
+
+フロント側
+
+npx create-react-app . --template typescript
+
+npm i axios
+npm i react-router-dom @types/react-router-dom
+npm i @material-ui/core @material-ui/icons @material-ui/lab
+
+appフォルダ
+features
+auth 
+taskフォルダを作成
+
+types.tsをfeaturesに内に作成
+export interface FILE extends Blob {
+    readonly lastModified: number;
+    readonly name: string;
+}
+今回使用するアバターの更新関係を保持するため
+非同期で作っていくため、authSliceにて
+createAsyncThunkをimport
+
+
+export const fetchAsyncLogin = createAsyncThunk(
+    'auth/login',
+    async (auth: CRED) => {
+    const res = await axios.post<JWT>(
+        `${process.env.REACT_APP_API_URL}/authen/jwt/create`,
+        auth,
+        {
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }
+    );
+    return res.data
+}
+);
+についてaxios.post<JWT>は、返り値が、refreshとaccessであるため、それを受け取れるように
+している。
+
+authSlice.tsを作成させたのち
+そのデータをstore.tsに渡した。
+
+この時npmをスタートさせて、reduxでデータがしっかり渡っているか確かめたところ、渡されていなかった。
+index.tsxにて
+appを
+import { Provider } from 'react-redux';
+<Provider store={store}>
+ </Provider>
+で囲むことでその問題を解決できた。
+
+Auth.tsxとAuth.module.cssをauthフォルダ内に作成
+認証画面（コンポーネントを作成するため)
+
+
+router-domにてページ遷移を実装する
+
+index.tsxを編集
+AppコンポーネントとAuthコンポーネントらに遷移できるように処理
+App.tsx内のテンプレートを削除す
+
+
+taskSliceの作成
+types.tsにて
+バックに送るための型とデータをセットする
+taskSlice.tsを作成し、types.tsで設定したデータを初期化してセットする
+その後
+fetchAsyncを利用して非同期でバックからデータを取ってくる処理を必要なものだけ作成していき
+extrareducerにて、その挙動を書いていく。
+s
+
+これらの機能を作ったのち、appコンポーネントを作成した。
+
+TaskList.tsxの作成
+
+TaskDisplay.tsxの作成
+
+TaskForm.tsxの作成
