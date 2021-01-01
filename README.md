@@ -85,7 +85,7 @@ sqlparse==0.3.1
 
 # Note
 
-注意点などがあれば書く
+特になし
 
 # Author
 
