@@ -150,6 +150,10 @@ class TaskSerializer(serializers.ModelSerializer):
     status_name = serializers.CharField(source='get_status_display', read_only=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    
+    //上記のように、わざわざcategory_itemやowner_usernameなどを定義している理由は、中身の名前も持ってくるため、
+    //仮にcategoryだけフロントに渡すようにした場合、categoryテーブルでは、idとカテゴリー名があり（例：  1(id):  英語(カテゴリー名) ）、その内のidしか渡せないから。
+    //しかし、今回は、自分が作ったタスクでカテゴリーの名前は何なのかを参照できる実装をしたいため上記のように新たに定義しておく必要がある。
 
     class Meta:
         model = Task
@@ -241,8 +245,10 @@ s
 
 これらの機能を作ったのち、appコンポーネントを作成した。
 
-TaskList.tsxの作成
 
-TaskDisplay.tsxの作成
+下記にて、必要なコンポーネントを作成する。
+TaskList.tsxの作成（タスクのリスト一覧を表示させるため）
 
-TaskForm.tsxの作成
+TaskDisplay.tsxの作成（あるタスクにホバーしたときに右側にそのタスクの詳細を表示させるため）
+
+TaskForm.tsxの作成（「ADD NEW」ボタンを押したときに新たなタスクを作成できるようにその記入画面を右側に表示させるため）
