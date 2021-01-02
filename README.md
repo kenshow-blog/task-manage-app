@@ -21,8 +21,11 @@
 
 ・モダン技術を用いたアプリ開発や方式を習得したかったから。
 採用技術
+
 （フロント： react,react-redux,TypeScript
+
  バック： Django(python)
+ 
  インフラ： EC2(AWS),NGINX)
 
 ・エンジニアとしての自走力を養いたかった。
